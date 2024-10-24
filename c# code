@@ -1,0 +1,436 @@
+using System;
+using System.Collections.Generic;
+
+namespace OnlineRetailStore
+{
+    // Abstract class for Products
+    public abstract class Product
+    {
+        public string Name { get; set; }
+        public decimal Price { get; set; }
+        public int Stock { get; set; }
+
+        // Abstract method to get the description of the product
+        public abstract string GetDescription();
+    }
+
+    // Electronics product class
+    public class Electronic : Product
+    {
+        public int WarrantyPeriod { get; set; } // Warranty period in months
+
+        // Constructor for Electronic products
+        public Electronic(string name, decimal price, int warrantyPeriod)
+        {
+            Name = name;
+            Price = price;
+            WarrantyPeriod = warrantyPeriod;
+            Stock = 20; // Initial stock for each product set to 20 units
+        }
+
+        // Override GetDescription to include warranty info
+        public override string GetDescription()
+        {
+            return $"{Name}, Warranty: {WarrantyPeriod} months, Price: {Price:C}";
+        }
+    }
+
+    // Clothing product class
+    public class Clothing : Product
+    {
+        public string Size { get; set; }
+        public string Material { get; set; }
+
+        // Constructor for Clothing products
+        public Clothing(string name, decimal price, string size, string material)
+        {
+            Name = name;
+            Price = price;
+            Size = size;
+            Material = material;
+            Stock = 20; // Initial stock for each product set to 20 units
+        }
+
+        // Override GetDescription to include size and material info
+        public override string GetDescription()
+        {
+            return $"{Name}, Size: {Size}, Material: {Material}, Price: {Price:C}";
+        }
+    }
+
+    // Grocery product class
+    public class Grocery : Product
+    {
+        public DateTime ExpirationDate { get; set; }
+
+        // Constructor for Grocery products
+        public Grocery(string name, decimal price, DateTime expirationDate)
+        {
+            Name = name;
+            Price = price;
+            ExpirationDate = expirationDate;
+            Stock = 20; // Initial stock for each product set to 20 units
+        }
+
+        // Override GetDescription to include expiration date
+        public override string GetDescription()
+        {
+            return $"{Name}, Expiration Date: {ExpirationDate.ToShortDateString()}, Price: {Price:C}";
+        }
+    }
+
+    // Order class to handle orders
+    public class Order
+    {
+        public List<(Product, int)> Items { get; set; } = new List<(Product, int)>();
+        public DateTime OrderDate { get; set; }
+        public DateTime DeliveryDate { get; set; }
+        public string Status { get; set; }
+        public string CustomerName { get; set; }
+        public string CustomerAddress { get; set; }
+
+        // Overloaded constructor: allows orders with products and quantities
+        public Order(List<(Product, int)> items, string customerName, string customerAddress)
+        {
+            Items = items;
+            CustomerName = customerName;
+            CustomerAddress = customerAddress;
+            OrderDate = DateTime.Now;
+            DeliveryDate = OrderDate.AddDays(new Random().Next(3, 7)); // Random delivery time between 3 and 7 days
+            Status = "Processing"; // Default status
+        }
+
+        // Method to calculate total cost of the order
+        public decimal CalculateTotal()
+        {
+            decimal total = 0;
+            foreach (var (product, quantity) in Items)
+            {
+                total += product.Price * quantity;
+
+                // Bulk discount: if more than 10 of any product, 10% discount
+                if (quantity >= 10)
+                {
+                    total -= (product.Price * quantity) * 0.10M;
+                }
+            }
+            return total;
+        }
+
+        // Method to process returns and update inventory
+        public void ProcessReturn(Product product, int quantity, Inventory inventory)
+        {
+            product.Stock += quantity; // Increase stock for returned products
+            inventory.UpdateStock(product, quantity); // Update stock in inventory
+            inventory.AddToReturnedStock(product, quantity); // Log returned item in inventory
+        }
+
+
+        // Display the details of the order
+        public void DisplayOrderDetails()
+        {
+            Console.WriteLine($"Order for {CustomerName}, Address: {CustomerAddress}");
+            foreach (var (product, quantity) in Items)
+            {
+                Console.WriteLine($"{product.Name} - Quantity: {quantity}, Subtotal: {product.Price * quantity:C}");
+            }
+            Console.WriteLine($"Total Cost: {CalculateTotal():C}");
+            Console.WriteLine($"Order Status: {Status}. Expected delivery on {DeliveryDate.ToShortDateString()}.");
+        }
+    }
+
+    // Inventory class to manage stock levels
+    public class Inventory
+    {
+        private List<Product> Products { get; set; }
+        private List<ReturnedItem> ReturnedStock { get; set; } = new List<ReturnedItem>(); // List to store returned stock
+
+        // Constructor to initialize the inventory with a list of products
+        public Inventory(List<Product> products)
+        {
+            Products = products;
+        }
+
+        // Method to update stock levels when an order is placed or returned
+        public void UpdateStock(Product product, int quantity)
+        {
+            product.Stock -= quantity;
+        }
+
+        // Method to log returned stock
+        public void AddToReturnedStock(Product product, int quantity)
+        {
+            ReturnedItem returnedItem = new ReturnedItem(product, quantity, DateTime.Now);
+            ReturnedStock.Add(returnedItem);
+        }
+
+        // Method to display current stock levels of all products
+        public void DisplayStock()
+        {
+            Console.WriteLine("Current Stock Levels:");
+            foreach (var product in Products)
+            {
+                Console.WriteLine($"{product.Name}: {product.Stock} units remaining");
+            }
+        }
+
+        // Method to display returned stock
+        public void DisplayReturnedStock()
+        {
+            Console.WriteLine("Returned Stock:");
+            if (ReturnedStock.Count == 0)
+            {
+                Console.WriteLine("No items have been returned.");
+            }
+            else
+            {
+                foreach (var returnedItem in ReturnedStock)
+                {
+                    Console.WriteLine(returnedItem.GetDescription());
+                }
+            }
+        }
+    }
+
+
+    // Main shopping system class
+    public class RetailStoreSystem
+    {
+        // Main entry point for the system
+        public static void Main(string[] args)
+        {
+            // Initialize products
+            List<Product> products = new List<Product>
+            {
+                new Electronic("Apple MacBook", 17000, 12),
+                new Electronic("Apple iPhone 16", 20000, 12),
+                new Electronic("Apple AirPods", 2000, 12),
+                new Clothing("Men's Plain T-Shirt", 250, "M", "Cotton"),
+                new Clothing("Women's Summer Dress", 300, "S", "Polyester"),
+                new Grocery("6 Pack Long Life Milk", 120, new DateTime(2024, 12, 20)),
+                new Grocery("Cake Mix (500g)", 85, new DateTime(2024, 11, 25)),
+                new Grocery("Cheddar Cheese (1kg)", 100, new DateTime(2024, 12, 29))
+            };
+
+            Inventory inventory = new Inventory(products); // Create inventory
+            Order currentOrder = null; // Variable to store the current order
+            bool exit = false; // Exit flag for the main loop
+
+            // Main menu loop
+            while (!exit)
+            {
+                Console.Clear(); // Clear the console for better UX
+                Console.WriteLine("Welcome to our Store!");
+                Console.WriteLine("1) Start Shopping");
+                Console.WriteLine("2) View Order Information");
+                Console.WriteLine("3) Return Product");
+                Console.WriteLine("4) Inventory Management");
+                Console.WriteLine("5) Exit");
+
+                string choice = Console.ReadLine(); // Get user choice from menu
+
+                switch (choice)
+                {
+                    case "1":
+                        currentOrder = StartShopping(products, inventory); // Start the shopping process
+                        break;
+                    case "2":
+                        if (currentOrder != null)
+                        {
+                            currentOrder.DisplayOrderDetails(); // Display order details
+                        }
+                        else
+                        {
+                            Console.WriteLine("No order has been placed yet.");
+                        }
+                        Console.WriteLine("\nPress any key to return to the main menu.");
+                        Console.ReadKey(); // Wait for user to press a key to continue
+                        break;
+                    case "3":
+                        if (currentOrder != null)
+                        {
+                            ProcessReturn(currentOrder, products, inventory); // Handle product returns
+                        }
+                        else
+                        {
+                            Console.WriteLine("No order to return.");
+                        }
+                        Console.WriteLine("\nPress any key to return to the main menu.");
+                        Console.ReadKey(); // Wait for user to press a key to continue
+                        break;
+                    case "4":
+                        AdminInventoryManagement(inventory); // Handle inventory management
+                        break;
+                    case "5":
+                        exit = true; // Set exit flag to true, ending the program
+                        Console.WriteLine("Thank you for shopping! Goodbye.");
+                        break;
+                    default:
+                        Console.WriteLine("Invalid choice."); // Handle invalid menu input
+                        break;
+                }
+            }
+        }
+
+        // Method to start the shopping process
+        public static Order StartShopping(List<Product> products, Inventory inventory)
+        {
+            List<(Product, int)> selectedProducts = new List<(Product, int)>(); // List to hold selected products
+            string customerName = "";
+            string customerAddress = "";
+
+            // Shopping loop
+            while (true)
+            {
+                Console.Clear(); // Clear the console for better UX
+                Console.WriteLine("Select Product Category:");
+                Console.WriteLine("1) Electronics\n2) Clothing\n3) Groceries\n4) Finish and Checkout\n5) Cancel and Return to Main Menu");
+                string categoryChoice = Console.ReadLine(); // Get category choice from user
+
+                if (categoryChoice == "4") // If user chooses to finish and checkout
+                {
+                    Console.WriteLine("Enter your name:");
+                    customerName = Console.ReadLine(); // Get customer name
+                    Console.WriteLine("Enter your address:");
+                    customerAddress = Console.ReadLine(); // Get customer address
+
+                    Order order = new Order(selectedProducts, customerName, customerAddress); // Create new order
+                    Console.WriteLine($"Total cost: {order.CalculateTotal():C}"); // Display total cost
+                    Console.WriteLine($"Your order has been placed and will be delivered by {order.DeliveryDate.ToShortDateString()}.");
+
+                    return order; // Return the created order
+                }
+                else if (categoryChoice == "5") // If user chooses to cancel and return to main menu
+                {
+                    Console.WriteLine("You have cancelled the order.");
+                    return null; // Return null as no order was placed
+                }
+
+                DisplayProductCategory(categoryChoice, products, selectedProducts, inventory); // Display products based on category
+            }
+        }
+
+        // Method to display products based on selected category
+        public static void DisplayProductCategory(string categoryChoice, List<Product> products, List<(Product, int)> selectedProducts, Inventory inventory)
+        {
+            List<Product> filteredProducts = new List<Product>();
+
+            // Filter products based on category choice
+            switch (categoryChoice)
+            {
+                case "1":
+                    filteredProducts = products.FindAll(p => p is Electronic); // Filter Electronics
+                    break;
+                case "2":
+                    filteredProducts = products.FindAll(p => p is Clothing); // Filter Clothing
+                    break;
+                case "3":
+                    filteredProducts = products.FindAll(p => p is Grocery); // Filter Groceries
+                    break;
+                default:
+                    Console.WriteLine("Invalid category.");
+                    return;
+            }
+
+            // Display the filtered products
+            Console.WriteLine("Available Products:");
+            for (int i = 0; i < filteredProducts.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}) {filteredProducts[i].GetDescription()}");
+            }
+
+            // Get product selection and quantity from user
+            Console.WriteLine("Select a product:");
+            int productIndex = int.Parse(Console.ReadLine()) - 1;
+            Product selectedProduct = filteredProducts[productIndex];
+
+            Console.WriteLine("Enter quantity:");
+            int quantity = int.Parse(Console.ReadLine());
+
+            // Check if enough stock is available
+            if (selectedProduct.Stock >= quantity)
+            {
+                selectedProducts.Add((selectedProduct, quantity)); // Add selected product to the list
+                inventory.UpdateStock(selectedProduct, quantity); // Update stock in the inventory
+                Console.WriteLine($"{quantity} unit(s) of {selectedProduct.Name} added to your order.");
+            }
+            else
+            {
+                Console.WriteLine("Not enough stock available.");
+            }
+
+            Console.WriteLine("\nPress any key to continue shopping.");
+            Console.ReadKey(); // Wait for user to press a key to continue
+        }
+
+        // Method to process returns
+        public static void ProcessReturn(Order order, List<Product> products, Inventory inventory)
+        {
+            Console.WriteLine("Enter the product you want to return:");
+            for (int i = 0; i < order.Items.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}) {order.Items[i].Item1.Name} - Quantity: {order.Items[i].Item2}");
+            }
+
+            int returnChoice = int.Parse(Console.ReadLine()) - 1; // Get product to return
+            var (product, quantity) = order.Items[returnChoice]; // Extract product and quantity from order
+
+            Console.WriteLine($"Enter quantity to return (Max {quantity}):");
+            int returnQuantity = int.Parse(Console.ReadLine()); // Get return quantity from user
+
+            order.ProcessReturn(product, returnQuantity, inventory); // Process the return
+
+            Console.WriteLine($"{returnQuantity} units of {product.Name} returned.");
+        }
+
+        // Method to handle inventory management for admins
+        public static void AdminInventoryManagement(Inventory inventory)
+        {
+            Console.WriteLine("Enter Admin Name:");
+            string adminName = Console.ReadLine();
+
+            Console.WriteLine("1) Display Stock Levels\n2) Display Returned Stock");
+            string adminChoice = Console.ReadLine();
+
+            switch (adminChoice)
+            {
+                case "1":
+                    inventory.DisplayStock(); // Display current stock levels
+                    break;
+                case "2":
+                    inventory.DisplayReturnedStock(); // Display returned stock
+                    break;
+                default:
+                    Console.WriteLine("Invalid choice.");
+                    break;
+            }
+
+            Console.WriteLine("\nPress any key to return to the main menu.");
+            Console.ReadKey();
+        }
+
+    }
+
+    // Class to store returned item details
+    public class ReturnedItem
+    {
+        public Product Product { get; set; }
+        public int Quantity { get; set; }
+        public DateTime ReturnDate { get; set; }
+
+        // Constructor for ReturnedItem
+        public ReturnedItem(Product product, int quantity, DateTime returnDate)
+        {
+            Product = product;
+            Quantity = quantity;
+            ReturnDate = returnDate;
+        }
+
+        // Method to return a string description of the returned item
+        public string GetDescription()
+        {
+            return $"{Product.Name} - Quantity: {Quantity}, Returned on: {ReturnDate.ToShortDateString()}";
+        }
+    }
+
+}
